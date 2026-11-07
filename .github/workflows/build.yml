@@ -1,23 +1,35 @@
-name: Build ZCRUSH VST3 (Windows)
+name: Build Pitcher
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
+  # Быстрая проверка DSP-ядра: латентность, точность питча, форманты, стабильность
+  dsp-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python deps
+        run: pip install numpy scipy
+      - name: Build test CLI
+        run: g++ -O2 -std=c++17 -o pitcher_cli Tests/pitcher_cli.cpp
+      - name: Run DSP tests
+        run: python3 Tests/run_tests.py ./pitcher_cli
+
+  # Сборка VST3 для Windows
+  build-windows-vst3:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Configure
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64
-
-      - name: Build (Release)
-        run: cmake --build build --config Release --parallel
-
-      - name: Upload VST3
+        run: cmake -S . -B build -A x64
+      - name: Build VST3 (Release)
+        run: cmake --build build --config Release --target Pitcher_VST3 --parallel
+      - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:
-          name: ZCRUSH-VST3-Windows
-          path: build/ZCRUSH_artefacts/Release/VST3/ZCRUSH.vst3
+          name: Pitcher-VST3-Windows
+          path: build/Pitcher_artefacts/Release/VST3/Pitcher.vst3
+          if-no-files-found: error
